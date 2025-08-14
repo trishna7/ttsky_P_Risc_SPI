@@ -26,16 +26,14 @@ module External_Memory_Controller (
     reg [3:0] cache_lru;  // Simple LRU counter
     
     // Memory controller state machine
-    typedef enum logic [2:0] {
-        IDLE,
-        CHECK_CACHE,
-        START_SPI,
-        WAIT_SPI,
-        UPDATE_CACHE,
-        COMPLETE
-    } mem_state_t;
-    
-    mem_state_t current_state, next_state;
+    parameter IDLE = 3'b000;
+    parameter CHECK_CACHE = 3'b001;
+    parameter START_SPI = 3'b010;
+    parameter WAIT_SPI = 3'b011;
+    parameter UPDATE_CACHE = 3'b100;
+    parameter COMPLETE = 3'b101;
+
+    reg [2:0] current_state, next_state;
     
     // SPI Controller interface
     wire spi_data_ready;
