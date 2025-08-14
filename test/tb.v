@@ -23,37 +23,55 @@ module tb ();
   wire [7:0] uo_out;
   wire [7:0] uio_out;
   wire [7:0] uio_oe;
+
 `ifdef GL_TEST
   wire VPWR = 1'b1;
   wire VGND = 1'b0;
 `endif
 
-reg uart_rx, spi_miso;
-wire uart_tx, gpio_pin, spi_mosi, spi_clk, spi_cs_n ;
+  // Individual signal wires for clarity
+  reg uart_rx;
+  reg spi_miso;
+  wire uart_tx;
+  wire gpio_pin;
+  wire spi_mosi;
+  wire spi_clk;
+  wire spi_cs_n;
 
-always @(*) begin
-    
+  // Properly initialize all inputs
+  initial begin
+    clk = 1'b0;
+    rst_n = 1'b0;
+    ena = 1'b1;
+    uart_rx = 1'b1;  // UART idle state
+    spi_miso = 1'b0; // SPI MISO initially low
+    ui_in = 8'b0;
+    uio_in = 8'b0;
+  end
+
+  // Clock generation
+  always #10 clk = ~clk;  // 50MHz clock (20ns period)
+
+  // Input assignments - properly drive ui_in and uio_in
+  always @(*) begin
     ui_in[7:4] = 4'b0;
     ui_in[3] = uart_rx;     // UART RX on bit 3 per pinout
     ui_in[2:0] = 3'b0;
-    uio_in[0] = spi_miso;
-
+    
+    uio_in[7:1] = 7'b0;
+    uio_in[0] = spi_miso;   // SPI MISO on bit 0
   end
 
-  initial begin
-    uart_rx = 1'b1; // UART idle state
-end
+  // Output assignments - extract signals from output buses
+  assign uart_tx = uo_out[0];   // UART TX on uo[0]
+  assign gpio_pin = uo_out[1];  // GPIO on uo[1]
+  
+  assign spi_mosi = uio_out[1]; // SPI MOSI on uio[1]
+  assign spi_clk = uio_out[2];  // SPI CLK on uio[2]
+  assign spi_cs_n = uio_out[3]; // SPI CS_N on uio[3]
 
-  assign uart_tx = uo_out[0];   // uo[4]: "uart_tx"
-  assign gpio_pin = uo_out[1];  // uo[5]: "gpio_pin"
-  assign uio_out[1] = spi_mosi;   // SPI MOSI
-  assign uio_out[2] = spi_clk;    // SPI Clock
-  assign uio_out[3] = spi_cs_n;
-  //assign spi_miso = uio_in[0];
-
-  // Replace tt_um_example with your module name:
+  // Instantiate the main module
   tt_um_trish_P_Risc tt_um_trish_P_Risc (
-
       // Include power ports for the Gate Level test:
 `ifdef GL_TEST
       .VPWR(VPWR),
@@ -69,5 +87,16 @@ end
       .clk    (clk),      // clock
       .rst_n  (rst_n)     // not reset
   );
+
+  // Optional: Add some debug monitoring
+  initial begin
+    #1000;
+    $display("=== Testbench Debug Info ===");
+    $display("Clock period: 20ns (50MHz)");
+    $display("Reset active low");
+    $display("UART RX on ui_in[3]");
+    $display("GPIO out on uo_out[1]");
+    $display("SPI signals on uio_out[3:1] and uio_in[0]");
+  end
 
 endmodule
