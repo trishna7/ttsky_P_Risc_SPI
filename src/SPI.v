@@ -30,20 +30,20 @@ module SPI_Controller (
     
     // State machine
     // SPI State parameters
-parameter SPI_IDLE = 4'b0000;
-parameter SPI_START_WRITE_EN = 4'b0001;
-parameter SPI_SEND_WRITE_EN = 4'b0010;
-parameter SPI_START_READ = 4'b0011;
-parameter SPI_SEND_READ_CMD = 4'b0100;
-parameter SPI_SEND_READ_ADDR = 4'b0101;
-parameter SPI_READ_DATA = 4'b0110;
-parameter SPI_START_WRITE = 4'b0111;
-parameter SPI_SEND_WRITE_CMD = 4'b1000;
-parameter SPI_SEND_WRITE_ADDR = 4'b1001;
-parameter SPI_WRITE_DATA = 4'b1010;
-parameter SPI_CHECK_STATUS = 4'b1011;
-parameter SPI_DONE = 4'b1100;
-parameter SPI_ERROR = 4'b1101;
+parameter IDLE = 4'b0000;
+parameter START_WRITE_EN = 4'b0001;
+parameter SEND_WRITE_EN = 4'b0010;
+parameter START_READ = 4'b0011;
+parameter SEND_READ_CMD = 4'b0100;
+parameter SEND_READ_ADDR = 4'b0101;
+parameter READ_DATA = 4'b0110;
+parameter START_WRITE = 4'b0111;
+parameter SEND_WRITE_CMD = 4'b1000;
+parameter SEND_WRITE_ADDR = 4'b1001;
+parameter WRITE_DATA = 4'b1010;
+parameter CHECK_STATUS = 4'b1011;
+parameter DONE = 4'b1100;
+parameter ERROR = 4'b1101;
 
 reg [3:0] current_state, next_state;
     

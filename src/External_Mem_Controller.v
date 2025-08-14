@@ -70,12 +70,21 @@ module External_Memory_Controller (
         operation_pending = 1'b0;
         
         // Initialize cache
-        for (i = 0; i < CACHE_SIZE; i = i + 1) begin
-            cache_data[i] = 32'b0;
-            cache_addr[i] = 32'hFFFFFFFF; // Invalid address
-            cache_valid[i] = 1'b0;
-        end
-    end
+        cache_data[0] = 32'b0; cache_data[1] = 32'b0; cache_data[2] = 32'b0; cache_data[3] = 32'b0;
+    cache_data[4] = 32'b0; cache_data[5] = 32'b0; cache_data[6] = 32'b0; cache_data[7] = 32'b0;
+    cache_data[8] = 32'b0; cache_data[9] = 32'b0; cache_data[10] = 32'b0; cache_data[11] = 32'b0;
+    cache_data[12] = 32'b0; cache_data[13] = 32'b0; cache_data[14] = 32'b0; cache_data[15] = 32'b0;
+    
+    cache_addr[0] = 32'hFFFFFFFF; cache_addr[1] = 32'hFFFFFFFF; cache_addr[2] = 32'hFFFFFFFF; cache_addr[3] = 32'hFFFFFFFF;
+    cache_addr[4] = 32'hFFFFFFFF; cache_addr[5] = 32'hFFFFFFFF; cache_addr[6] = 32'hFFFFFFFF; cache_addr[7] = 32'hFFFFFFFF;
+    cache_addr[8] = 32'hFFFFFFFF; cache_addr[9] = 32'hFFFFFFFF; cache_addr[10] = 32'hFFFFFFFF; cache_addr[11] = 32'hFFFFFFFF;
+    cache_addr[12] = 32'hFFFFFFFF; cache_addr[13] = 32'hFFFFFFFF; cache_addr[14] = 32'hFFFFFFFF; cache_addr[15] = 32'hFFFFFFFF;
+    
+    cache_valid[0] = 1'b0; cache_valid[1] = 1'b0; cache_valid[2] = 1'b0; cache_valid[3] = 1'b0;
+    cache_valid[4] = 1'b0; cache_valid[5] = 1'b0; cache_valid[6] = 1'b0; cache_valid[7] = 1'b0;
+    cache_valid[8] = 1'b0; cache_valid[9] = 1'b0; cache_valid[10] = 1'b0; cache_valid[11] = 1'b0;
+    cache_valid[12] = 1'b0; cache_valid[13] = 1'b0; cache_valid[14] = 1'b0; cache_valid[15] = 1'b0;
+end
     
     // Instantiate SPI Controller
     SPI_Controller spi_ctrl (
@@ -95,16 +104,44 @@ module External_Memory_Controller (
     
     // Cache lookup logic
     always @(*) begin
-        cache_hit = 1'b0;
-        cache_hit_index = 4'b0;
-        
-        for (i = 0; i < CACHE_SIZE; i = i + 1) begin
-            if (cache_valid[i] && (cache_addr[i] == current_address)) begin
-                cache_hit = 1'b1;
-                cache_hit_index = i[3:0];
-            end
-        end
+    cache_hit = 1'b0;
+    cache_hit_index = 4'b0;
+    
+    // Unrolled cache lookup for better synthesis
+    if (cache_valid[0] && (cache_addr[0] == current_address)) begin
+        cache_hit = 1'b1; cache_hit_index = 4'd0;
+    end else if (cache_valid[1] && (cache_addr[1] == current_address)) begin
+        cache_hit = 1'b1; cache_hit_index = 4'd1;
+    end else if (cache_valid[2] && (cache_addr[2] == current_address)) begin
+        cache_hit = 1'b1; cache_hit_index = 4'd2;
+    end else if (cache_valid[3] && (cache_addr[3] == current_address)) begin
+        cache_hit = 1'b1; cache_hit_index = 4'd3;
+    end else if (cache_valid[4] && (cache_addr[4] == current_address)) begin
+        cache_hit = 1'b1; cache_hit_index = 4'd4;
+    end else if (cache_valid[5] && (cache_addr[5] == current_address)) begin
+        cache_hit = 1'b1; cache_hit_index = 4'd5;
+    end else if (cache_valid[6] && (cache_addr[6] == current_address)) begin
+        cache_hit = 1'b1; cache_hit_index = 4'd6;
+    end else if (cache_valid[7] && (cache_addr[7] == current_address)) begin
+        cache_hit = 1'b1; cache_hit_index = 4'd7;
+    end else if (cache_valid[8] && (cache_addr[8] == current_address)) begin
+        cache_hit = 1'b1; cache_hit_index = 4'd8;
+    end else if (cache_valid[9] && (cache_addr[9] == current_address)) begin
+        cache_hit = 1'b1; cache_hit_index = 4'd9;
+    end else if (cache_valid[10] && (cache_addr[10] == current_address)) begin
+        cache_hit = 1'b1; cache_hit_index = 4'd10;
+    end else if (cache_valid[11] && (cache_addr[11] == current_address)) begin
+        cache_hit = 1'b1; cache_hit_index = 4'd11;
+    end else if (cache_valid[12] && (cache_addr[12] == current_address)) begin
+        cache_hit = 1'b1; cache_hit_index = 4'd12;
+    end else if (cache_valid[13] && (cache_addr[13] == current_address)) begin
+        cache_hit = 1'b1; cache_hit_index = 4'd13;
+    end else if (cache_valid[14] && (cache_addr[14] == current_address)) begin
+        cache_hit = 1'b1; cache_hit_index = 4'd14;
+    end else if (cache_valid[15] && (cache_addr[15] == current_address)) begin
+        cache_hit = 1'b1; cache_hit_index = 4'd15;
     end
+end
     
     // Main state machine
     always @(posedge CLK or posedge reset) begin
