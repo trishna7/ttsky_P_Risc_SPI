@@ -21,7 +21,6 @@ project:
     - "ALU_Decoder.v"
     - "ALU.v"
     - "Control_Unit.v"
-    - "Data_Memory.v"
     - "Decode_Reg.v"
     - "Execute_Reg.v"
     - "GPIO.v"
@@ -36,7 +35,6 @@ project:
     - "Writeback_Reg.v"
     - "SPI.v"
     - "External_Mem_Controller.v"
-    #- "instruction.mem"
     - "tt_um_trish_P_Risc.v"
     
 
