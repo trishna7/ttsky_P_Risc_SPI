@@ -17,6 +17,7 @@ module tb ();
   reg clk;
   reg rst_n;
   reg ena;
+  
   reg [7:0] ui_in;
   reg [7:0] uio_in;
   wire [7:0] uo_out;
@@ -27,8 +28,31 @@ module tb ();
   wire VGND = 1'b0;
 `endif
 
+reg uart_rx, spi_miso;
+wire uart_tx, gpio_pin, spi_mosi, spi_clk, spi_cs_n ;
+
+always @(*) begin
+    
+    ui_in[7:4] = 4'b0;
+    ui_in[3] = uart_rx;     // UART RX on bit 3 per pinout
+    ui_in[2:0] = 3'b0;
+    uio_in[0] = spi_miso;
+
+  end
+
+  initial begin
+    uart_rx = 1'b1; // UART idle state
+end
+
+  assign uart_tx = uo_out[0];   // uo[4]: "uart_tx"
+  assign gpio_pin = uo_out[1];  // uo[5]: "gpio_pin"
+  assign uio_out[1] = spi_mosi;   // SPI MOSI
+  assign uio_out[2] = spi_clk;    // SPI Clock
+  assign uio_out[3] = spi_cs_n;
+  //assign spi_miso = uio_in[0];
+
   // Replace tt_um_example with your module name:
-  tt_um_example user_project (
+  tt_um_trish_P_Risc tt_um_trish_P_Risc (
 
       // Include power ports for the Gate Level test:
 `ifdef GL_TEST
