@@ -15,7 +15,7 @@ module Registers (
     output [31:0] RD2           //read_data2
 );
     // Core storage
-    reg [31:0] reg_file [1:18];
+    reg [31:0] reg_file [1:15];
     
     assign RD1 = (A1 == 5'b0) ? 32'b0 : reg_file[A1];
     assign RD2 = (A2 == 5'b0) ? 32'b0 : reg_file[A2];
