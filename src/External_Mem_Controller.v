@@ -1,41 +1,36 @@
 `default_nettype none
 
+// SIGNIFICANTLY REDUCED External Memory Controller for area savings
 module External_Memory_Controller (
     input wire CLK,
     input wire reset,
     
-    // Processor interface (same as Data_Memory.v)
-    input wire WE,          // Write enable
-    input wire [31:0] A,    // Address from processor
-    input wire [31:0] WD,   // Write data
-    output reg [31:0] RD,   // Read data
-    output reg mem_ready,   // Memory operation complete
+    // Processor interface
+    input wire WE,
+    input wire [31:0] A,
+    input wire [31:0] WD,
+    output reg [31:0] RD,
+    output reg mem_ready,
     
-    // SPI interface pins for external memory
+    // SPI interface pins
     output wire spi_clk,
     output wire spi_mosi,
     input wire spi_miso,
     output wire spi_cs_n
 );
 
-    // Internal cache for frequently accessed data
-    parameter CACHE_SIZE = 16;  // 16 words cache
-    reg [31:0] cache_data [0:CACHE_SIZE-1];
-    reg [31:0] cache_addr [0:CACHE_SIZE-1];
-    reg cache_valid [0:CACHE_SIZE-1];
-    reg [3:0] cache_lru;  // Simple LRU counter
+    // MINIMAL cache for area savings
+    parameter CACHE_SIZE = 2;  // Reduced from 16 to 2!
+    reg [31:0] cache_data [0:1];
+    reg [31:0] cache_addr [0:1]; 
+    reg cache_valid [0:1];
+    reg cache_lru;  // Single bit for 2-entry cache
     
-    // Memory controller state machine
-    parameter IDLE = 3'b000;
-    parameter CHECK_CACHE = 3'b001;
-    parameter START_SPI = 3'b010;
-    parameter WAIT_SPI = 3'b011;
-    parameter UPDATE_CACHE = 3'b100;
-    parameter COMPLETE = 3'b101;
-
-    reg [2:0] current_state, next_state;
+    // Simple 2-state controller
+    reg state;  // 0=IDLE, 1=ACTIVE
+    parameter IDLE = 1'b0, ACTIVE = 1'b1;
     
-    // SPI Controller interface
+    // SPI Controller interface - simplified
     wire spi_data_ready;
     reg spi_start;
     wire [31:0] spi_read_data;
@@ -43,51 +38,33 @@ module External_Memory_Controller (
     reg [31:0] spi_write_data;
     reg spi_write_enable;
     
-    // Internal registers
+    // Internal registers - minimal set
     reg [31:0] current_address;
     reg [31:0] current_write_data;
     reg current_we;
     reg cache_hit;
-    reg [3:0] cache_hit_index;
     reg operation_pending;
     
-    // Initialize cache and registers
-    integer i;
+    // Initialize
     initial begin
-        current_state = IDLE;
-        mem_ready = 1'b1;  // Ready initially
+        state = IDLE;
+        mem_ready = 1'b1;
         RD = 32'b0;
         spi_start = 1'b0;
-        spi_address = 32'b0;
-        spi_write_data = 32'b0;
-        spi_write_enable = 1'b0;
-        current_address = 32'b0;
-        current_write_data = 32'b0;
-        current_we = 1'b0;
-        cache_hit = 1'b0;
-        cache_hit_index = 4'b0;
-        cache_lru = 4'b0;
+        cache_lru = 1'b0;
         operation_pending = 1'b0;
         
-        // Initialize cache
-        cache_data[0] = 32'b0; cache_data[1] = 32'b0; cache_data[2] = 32'b0; cache_data[3] = 32'b0;
-    cache_data[4] = 32'b0; cache_data[5] = 32'b0; cache_data[6] = 32'b0; cache_data[7] = 32'b0;
-    cache_data[8] = 32'b0; cache_data[9] = 32'b0; cache_data[10] = 32'b0; cache_data[11] = 32'b0;
-    cache_data[12] = 32'b0; cache_data[13] = 32'b0; cache_data[14] = 32'b0; cache_data[15] = 32'b0;
+        // Initialize small cache
+        cache_data[0] = 32'b0;
+        cache_data[1] = 32'b0;
+        cache_addr[0] = 32'hFFFFFFFF;
+        cache_addr[1] = 32'hFFFFFFFF;
+        cache_valid[0] = 1'b0;
+        cache_valid[1] = 1'b0;
+    end
     
-    cache_addr[0] = 32'hFFFFFFFF; cache_addr[1] = 32'hFFFFFFFF; cache_addr[2] = 32'hFFFFFFFF; cache_addr[3] = 32'hFFFFFFFF;
-    cache_addr[4] = 32'hFFFFFFFF; cache_addr[5] = 32'hFFFFFFFF; cache_addr[6] = 32'hFFFFFFFF; cache_addr[7] = 32'hFFFFFFFF;
-    cache_addr[8] = 32'hFFFFFFFF; cache_addr[9] = 32'hFFFFFFFF; cache_addr[10] = 32'hFFFFFFFF; cache_addr[11] = 32'hFFFFFFFF;
-    cache_addr[12] = 32'hFFFFFFFF; cache_addr[13] = 32'hFFFFFFFF; cache_addr[14] = 32'hFFFFFFFF; cache_addr[15] = 32'hFFFFFFFF;
-    
-    cache_valid[0] = 1'b0; cache_valid[1] = 1'b0; cache_valid[2] = 1'b0; cache_valid[3] = 1'b0;
-    cache_valid[4] = 1'b0; cache_valid[5] = 1'b0; cache_valid[6] = 1'b0; cache_valid[7] = 1'b0;
-    cache_valid[8] = 1'b0; cache_valid[9] = 1'b0; cache_valid[10] = 1'b0; cache_valid[11] = 1'b0;
-    cache_valid[12] = 1'b0; cache_valid[13] = 1'b0; cache_valid[14] = 1'b0; cache_valid[15] = 1'b0;
-end
-    
-    // Instantiate SPI Controller
-    SPI_Controller spi_ctrl (
+    // MUCH SIMPLER SPI Controller instantiation
+    Simple_SPI_Controller spi_ctrl (
         .CLK(CLK),
         .reset(reset),
         .WE(spi_write_enable),
@@ -102,165 +79,157 @@ end
         .spi_cs_n(spi_cs_n)
     );
     
-    // Cache lookup logic
+    // Simple cache lookup - just 2 entries
     always @(*) begin
-    cache_hit = 1'b0;
-    cache_hit_index = 4'b0;
-    
-    // Unrolled cache lookup for better synthesis
-    if (cache_valid[0] && (cache_addr[0] == current_address)) begin
-        cache_hit = 1'b1; cache_hit_index = 4'd0;
-    end else if (cache_valid[1] && (cache_addr[1] == current_address)) begin
-        cache_hit = 1'b1; cache_hit_index = 4'd1;
-    end else if (cache_valid[2] && (cache_addr[2] == current_address)) begin
-        cache_hit = 1'b1; cache_hit_index = 4'd2;
-    end else if (cache_valid[3] && (cache_addr[3] == current_address)) begin
-        cache_hit = 1'b1; cache_hit_index = 4'd3;
-    end else if (cache_valid[4] && (cache_addr[4] == current_address)) begin
-        cache_hit = 1'b1; cache_hit_index = 4'd4;
-    end else if (cache_valid[5] && (cache_addr[5] == current_address)) begin
-        cache_hit = 1'b1; cache_hit_index = 4'd5;
-    end else if (cache_valid[6] && (cache_addr[6] == current_address)) begin
-        cache_hit = 1'b1; cache_hit_index = 4'd6;
-    end else if (cache_valid[7] && (cache_addr[7] == current_address)) begin
-        cache_hit = 1'b1; cache_hit_index = 4'd7;
-    end else if (cache_valid[8] && (cache_addr[8] == current_address)) begin
-        cache_hit = 1'b1; cache_hit_index = 4'd8;
-    end else if (cache_valid[9] && (cache_addr[9] == current_address)) begin
-        cache_hit = 1'b1; cache_hit_index = 4'd9;
-    end else if (cache_valid[10] && (cache_addr[10] == current_address)) begin
-        cache_hit = 1'b1; cache_hit_index = 4'd10;
-    end else if (cache_valid[11] && (cache_addr[11] == current_address)) begin
-        cache_hit = 1'b1; cache_hit_index = 4'd11;
-    end else if (cache_valid[12] && (cache_addr[12] == current_address)) begin
-        cache_hit = 1'b1; cache_hit_index = 4'd12;
-    end else if (cache_valid[13] && (cache_addr[13] == current_address)) begin
-        cache_hit = 1'b1; cache_hit_index = 4'd13;
-    end else if (cache_valid[14] && (cache_addr[14] == current_address)) begin
-        cache_hit = 1'b1; cache_hit_index = 4'd14;
-    end else if (cache_valid[15] && (cache_addr[15] == current_address)) begin
-        cache_hit = 1'b1; cache_hit_index = 4'd15;
+        cache_hit = 1'b0;
+        if (cache_valid[0] && (cache_addr[0] == current_address)) begin
+            cache_hit = 1'b1;
+        end else if (cache_valid[1] && (cache_addr[1] == current_address)) begin
+            cache_hit = 1'b1;
+        end
     end
-end
     
-    // Main state machine
+    // Simplified state machine
     always @(posedge CLK or posedge reset) begin
         if (reset) begin
-            current_state <= IDLE;
+            state <= IDLE;
             mem_ready <= 1'b1;
             RD <= 32'b0;
             spi_start <= 1'b0;
             operation_pending <= 1'b0;
-            cache_lru <= 4'b0;
         end else begin
-            current_state <= next_state;
-            
-            case (current_state)
+            case (state)
                 IDLE: begin
                     mem_ready <= 1'b1;
                     spi_start <= 1'b0;
                     
-                    // Capture new memory request
                     if ((WE || !mem_ready) && !operation_pending) begin
                         current_address <= A;
                         current_write_data <= WD;
                         current_we <= WE;
                         operation_pending <= 1'b1;
                         mem_ready <= 1'b0;
+                        
+                        // Check cache immediately
+                        if (cache_hit && !WE) begin
+                            // Cache hit - return data immediately
+                            RD <= cache_valid[0] && (cache_addr[0] == A) ? 
+                                  cache_data[0] : cache_data[1];
+                            mem_ready <= 1'b1;
+                            operation_pending <= 1'b0;
+                        end else begin
+                            // Cache miss or write - go to SPI
+                            state <= ACTIVE;
+                            spi_address <= A;
+                            spi_write_data <= WD;
+                            spi_write_enable <= WE;
+                            spi_start <= 1'b1;
+                        end
                     end
                 end
                 
-                CHECK_CACHE: begin
-                    if (cache_hit && !current_we) begin
-                        // Cache hit for read
-                        RD <= cache_data[cache_hit_index];
-                        mem_ready <= 1'b1;
-                        operation_pending <= 1'b0;
-                    end else begin
-                        // Cache miss or write operation
-                        mem_ready <= 1'b0;
-                    end
-                end
-                
-                START_SPI: begin
-                    spi_address <= current_address;
-                    spi_write_data <= current_write_data;
-                    spi_write_enable <= current_we;
-                    spi_start <= 1'b1;
-                end
-                
-                WAIT_SPI: begin
+                ACTIVE: begin
                     spi_start <= 1'b0;
                     if (spi_data_ready) begin
                         if (!current_we) begin
                             RD <= spi_read_data;
+                            // Update cache - simple replacement
+                            cache_data[cache_lru] <= spi_read_data;
+                            cache_addr[cache_lru] <= current_address;
+                            cache_valid[cache_lru] <= 1'b1;
+                            cache_lru <= ~cache_lru;  // Toggle between 0 and 1
                         end
+                        mem_ready <= 1'b1;
+                        operation_pending <= 1'b0;
+                        state <= IDLE;
+                    end
+                end
+            endcase
+        end
+    end
+
+endmodule
+
+// MUCH SIMPLER SPI Controller
+module Simple_SPI_Controller (
+    input wire CLK,
+    input wire reset,
+    input wire WE,
+    input wire [31:0] A,
+    input wire [31:0] WD,
+    output reg [31:0] RD,
+    output reg data_ready,
+    input wire start_transaction,
+    
+    output reg spi_clk,
+    output reg spi_mosi,
+    input wire spi_miso,
+    output reg spi_cs_n
+);
+
+    // Simple 2-state machine
+    reg state; // 0=IDLE, 1=ACTIVE
+    reg [5:0] bit_counter;
+    reg [7:0] spi_clk_div;
+    reg [31:0] shift_out;
+    reg [31:0] shift_in;
+    
+    initial begin
+        spi_clk = 1'b0;
+        spi_mosi = 1'b0;
+        spi_cs_n = 1'b1;
+        RD = 32'b0;
+        data_ready = 1'b0;
+        state = 1'b0; // IDLE
+        bit_counter = 6'b0;
+        spi_clk_div = 8'b0;
+    end
+    
+    always @(posedge CLK or posedge reset) begin
+        if (reset) begin
+            state <= 1'b0;
+            spi_cs_n <= 1'b1;
+            spi_clk <= 1'b0;
+            data_ready <= 1'b0;
+            bit_counter <= 6'b0;
+            spi_clk_div <= 8'b0;
+        end else begin
+            // Simple SPI clock generation
+            spi_clk_div <= spi_clk_div + 1;
+            if (spi_clk_div[3:0] == 4'hF && state == 1'b1) begin  // Divide by 16
+                spi_clk <= ~spi_clk;
+            end
+            
+            case (state)
+                1'b0: begin // IDLE
+                    spi_cs_n <= 1'b1;
+                    data_ready <= 1'b0;
+                    if (start_transaction) begin
+                        state <= 1'b1;
+                        spi_cs_n <= 1'b0;
+                        bit_counter <= 32;
+                        shift_out <= WE ? {8'h02, A[23:0]} : {8'h03, A[23:0]}; // Simple read/write commands
+                        shift_in <= 32'b0;
                     end
                 end
                 
-                UPDATE_CACHE: begin
-                    if (!current_we) begin
-                        // Update cache with read data
-                        cache_data[cache_lru] <= spi_read_data;
-                        cache_addr[cache_lru] <= current_address;
-                        cache_valid[cache_lru] <= 1'b1;
-                        cache_lru <= cache_lru + 1;
-                        if (cache_lru >= CACHE_SIZE-1) 
-                            cache_lru <= 4'b0;
-                    end else begin
-                        // Invalidate cache entry for write
-                        for (i = 0; i < CACHE_SIZE; i = i + 1) begin
-                            if (cache_valid[i] && (cache_addr[i] == current_address)) begin
-                                cache_valid[i] <= 1'b0;
-                            end
+                1'b1: begin // ACTIVE
+                    if (spi_clk_div[3:0] == 4'hF) begin
+                        if (bit_counter > 0) begin
+                            spi_mosi <= shift_out[31];
+                            shift_out <= {shift_out[30:0], 1'b0};
+                            shift_in <= {shift_in[30:0], spi_miso};
+                            bit_counter <= bit_counter - 1;
+                        end else begin
+                            RD <= shift_in;
+                            data_ready <= 1'b1;
+                            spi_cs_n <= 1'b1;
+                            state <= 1'b0;
                         end
                     end
-                end
-                
-                COMPLETE: begin
-                    mem_ready <= 1'b1;
-                    operation_pending <= 1'b0;
                 end
             endcase
         end
     end
     
-    // Next state logic
-    always @(*) begin
-        next_state = current_state;
-        
-        case (current_state)
-            IDLE: begin
-                if (operation_pending)
-                    next_state = CHECK_CACHE;
-            end
-            
-            CHECK_CACHE: begin
-                if (cache_hit && !current_we)
-                    next_state = COMPLETE;
-                else
-                    next_state = START_SPI;
-            end
-            
-            START_SPI: begin
-                next_state = WAIT_SPI;
-            end
-            
-            WAIT_SPI: begin
-                if (spi_data_ready)
-                    next_state = UPDATE_CACHE;
-            end
-            
-            UPDATE_CACHE: begin
-                next_state = COMPLETE;
-            end
-            
-            COMPLETE: begin
-                next_state = IDLE;
-            end
-            
-            default: next_state = IDLE;
-        endcase
-    end
-
 endmodule
